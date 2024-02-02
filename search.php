@@ -11,10 +11,28 @@ function add3dots($string, $repl, $limit) {
 
 setlocale(LC_ALL, 'ru_RU.UTF-8', 'rus_RUS.UTF-8', 'Russian_Russia.UTF-8');
 
-if (isset($_GET['search']) && isset($_GET['submit'])) {
+if (isset($_GET['search']) && !empty($_GET['search'])) {
+    // Получение и фильтрация поискового запроса
     $search = filter_var($_GET['search'], FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-    $query = "SELECT * FROM posts WHERE title OR body LIKE '%$search%' ORDER BY date_time DESC";
-    $posts = mysqli_query($connection, $query);
+
+    // Экранирование специальных символов для SQL LIKE
+    $search = str_replace(['%', '_'], ['\%', '\_'], $search);
+    $search = "%{$search}%";
+
+    // Подготовленный запрос
+    $query = "SELECT * FROM posts WHERE title LIKE ? OR body LIKE ? ORDER BY date_time DESC";
+
+    if ($stmt = mysqli_prepare($connection, $query)) {
+        mysqli_stmt_bind_param($stmt, "ss", $search, $search);
+
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+
+        $posts = $result;
+    } else {
+        // Обработка ошибки подготовки запроса
+        echo "Ошибка при подготовке запроса: " . mysqli_error($connection);
+    }
 } else {
     header('location: ' . ROOT_URL . 'articles.php');
     die();
